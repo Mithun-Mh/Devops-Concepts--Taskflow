@@ -1,0 +1,47 @@
+# ==============================================================================
+# TaskFlow - Local Development Environment (Docker Compose)
+# This file will orchestrate frontend, backend, and PostgreSQL in future phases.
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  # Planned for Phase 2: PostgreSQL Database
+  # db:
+  #   image: postgres:16-alpine
+  #   container_name: taskflow-db
+  #   environment:
+  #     POSTGRES_USER: taskflow_user
+  #     POSTGRES_PASSWORD: taskflow_password
+  #     POSTGRES_DB: taskflow_db
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+
+  # Planned for Phase 2: FastAPI Backend
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile.dev
+  #   container_name: taskflow-backend
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     DATABASE_URL: postgresql://taskflow_user:taskflow_password@db:5432/taskflow_db
+  #   depends_on:
+  #     - db
+
+  # Planned for Phase 3: Next.js Frontend
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile.dev
+  #   container_name: taskflow-frontend
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - backend
+
+# volumes:
+#   postgres_data:
