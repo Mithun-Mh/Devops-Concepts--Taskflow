@@ -35,7 +35,11 @@ desktop.ini
 *.cert
 *.crt
 secrets.yaml
-credentials.json
+# --- Databases & Local Storage ---
+*.db
+*.sqlite
+*.sqlite3
+postgres_data/
 
 # --- Python / Backend ---
 __pycache__/
