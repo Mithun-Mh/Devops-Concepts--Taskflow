@@ -1,17 +1,23 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+
+from app.config import settings
 from app.routes import api_router
 from app.database import Base, engine
 
-# Create tables if they do not exist (safe for both local SQLite and PostgreSQL)
+# Import models so SQLAlchemy registers them with Base before create_all()
+import app.models  # noqa: F401
+
+# Create all tables in PostgreSQL (safe to call on every startup — it's a no-op
+# if the tables already exist)
 Base.metadata.create_all(bind=engine)
 
 # Configure Swagger UI & OpenAPI metadata
 tags_metadata = [
     {
         "name": "Health & Probes",
-        "description": "Kubernetes liveness, readiness, and service health endpoints.",
+        "description": "Kubernetes liveness, readiness, and database health endpoints.",
     },
     {
         "name": "Tasks",
@@ -25,14 +31,15 @@ app = FastAPI(
 # TaskFlow REST API
 
 Production-ready backend API for the **TaskFlow** task management platform.
-Built with **FastAPI**, **Pydantic v2**, and **SQLAlchemy**.
+Built with **FastAPI**, **Pydantic v2**, **SQLAlchemy 2**, and **PostgreSQL**.
 
 ## Features
-* **Health Probes**: Integrated `/api/health` for Kubernetes orchestration.
+* **PostgreSQL**: Persistent relational storage via SQLAlchemy ORM.
+* **Health Probes**: `/api/health` and `/api/health/db` for Kubernetes orchestration.
 * **Declarative Validation**: Automated payload validation using Pydantic.
 * **Interactive Documentation**: Auto-generated OpenAPI / Swagger UI specs.
     """,
-    version="0.1.0",
+    version=settings.APP_VERSION,
     openapi_tags=tags_metadata,
     docs_url="/docs",
     redoc_url="/redoc",

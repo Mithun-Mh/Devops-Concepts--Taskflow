@@ -1,38 +1,61 @@
 # ==============================================================================
 # TaskFlow - Local Development Environment (Docker Compose)
-# This file will orchestrate frontend, backend, and PostgreSQL in future phases.
+# ==============================================================================
+# Starts PostgreSQL so the FastAPI backend can connect to a real database.
+#
+# Usage:
+#   docker compose up -d db        # start only PostgreSQL
+#   docker compose up -d           # start everything
+#   docker compose down            # stop & remove containers
+#   docker compose down -v         # stop & delete the data volume too
 # ==============================================================================
 
 version: '3.8'
 
 services:
-  # Planned for Phase 2: PostgreSQL Database
-  # db:
-  #   image: postgres:16-alpine
-  #   container_name: taskflow-db
-  #   environment:
-  #     POSTGRES_USER: taskflow_user
-  #     POSTGRES_PASSWORD: taskflow_password
-  #     POSTGRES_DB: taskflow_db
-  #   ports:
-  #     - "5432:5432"
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
 
-  # Planned for Phase 2: FastAPI Backend
+  # ----------------------------------------------------------------------------
+  # PostgreSQL 16
+  # ----------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine          # Lightweight Alpine-based image
+    container_name: taskflow-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: taskflow_user
+      POSTGRES_PASSWORD: taskflow_password
+      POSTGRES_DB: taskflow_db
+    ports:
+      - "5432:5432"                    # Expose to host so FastAPI can reach it
+    volumes:
+      - postgres_data:/var/lib/postgresql/data   # Persist data across restarts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskflow_user -d taskflow_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------------------------------
+  # FastAPI Backend  (Phase 2 — uncomment when Dockerfile.dev is ready)
+  # ----------------------------------------------------------------------------
   # backend:
   #   build:
   #     context: ./backend
-  #     dockerfile: Dockerfile.dev
+  #     dockerfile: Dockerfile
   #   container_name: taskflow-backend
   #   ports:
   #     - "8000:8000"
+  #   env_file:
+  #     - ./backend/.env
   #   environment:
   #     DATABASE_URL: postgresql://taskflow_user:taskflow_password@db:5432/taskflow_db
   #   depends_on:
-  #     - db
+  #     db:
+  #       condition: service_healthy
 
-  # Planned for Phase 3: Next.js Frontend
+  # ----------------------------------------------------------------------------
+  # Next.js Frontend  (Phase 3)
+  # ----------------------------------------------------------------------------
   # frontend:
   #   build:
   #     context: ./frontend
@@ -43,5 +66,5 @@ services:
   #   depends_on:
   #     - backend
 
-# volumes:
-#   postgres_data:
+volumes:
+  postgres_data:    # Named volume — data survives container restarts
