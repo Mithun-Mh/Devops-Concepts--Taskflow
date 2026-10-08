@@ -1,3 +1,3 @@
-from app.services.task_service import TaskService
+from app.services import task_service  # noqa: F401 — re-exported for route imports
 
-__all__ = ["TaskService"]
+__all__ = ["task_service"]

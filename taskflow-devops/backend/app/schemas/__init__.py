@@ -1,11 +1,12 @@
 from app.schemas.health import HealthResponse
-from app.schemas.task import TaskBase, TaskCreate, TaskUpdate, TaskResponse, TaskStatus
+from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse, TaskListResponse
+from app.models.task import TaskStatus  # single source of truth
 
 __all__ = [
     "HealthResponse",
-    "TaskBase",
     "TaskCreate",
     "TaskUpdate",
     "TaskResponse",
+    "TaskListResponse",
     "TaskStatus",
 ]
