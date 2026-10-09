@@ -6,6 +6,9 @@
 # all configuration — NO hard-coded credentials anywhere in the codebase.
 # ==============================================================================
 
+from typing import List
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,6 +32,22 @@ class Settings(BaseSettings):
 
     # Echo every SQL statement to stdout (useful for debugging, disable in prod)
     SQL_ECHO: bool = False
+
+    # ----- CORS ---------------------------------------------------------------
+    # Comma-separated list of allowed frontend origins.
+    # Example (production): CORS_ORIGINS=https://app.example.com,https://www.example.com
+    # Never use "*" in production with allow_credentials=True.
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v: object) -> List[str]:
+        """Accept either a comma-separated string or an already-parsed list."""
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        raise ValueError(f"CORS_ORIGINS must be a string or list, got {type(v)}")
 
     # ----- App ---------------------------------------------------------------
     APP_VERSION: str = "0.1.0"

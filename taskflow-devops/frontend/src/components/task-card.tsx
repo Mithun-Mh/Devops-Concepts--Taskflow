@@ -8,19 +8,21 @@ import { Task, TaskStatus } from "@/types/task";
 interface TaskCardProps {
   task: Task;
   onUpdateStatus: (id: number, newStatus: TaskStatus) => void;
+  onComplete: (id: number) => void;
   onDelete: (id: number) => void;
 }
 
-export function TaskCard({ task, onUpdateStatus, onDelete }: TaskCardProps) {
+export function TaskCard({ task, onUpdateStatus, onComplete, onDelete }: TaskCardProps) {
+  // Cycle: pending → in_progress → completed → pending
   const getNextStatus = (current: TaskStatus): TaskStatus => {
-    if (current === "TODO") return "IN_PROGRESS";
-    if (current === "IN_PROGRESS") return "DONE";
-    return "TODO";
+    if (current === "pending") return "in_progress";
+    if (current === "in_progress") return "completed";
+    return "pending";
   };
 
   const nextStatusLabel = (current: TaskStatus): string => {
-    if (current === "TODO") return "Start Progress";
-    if (current === "IN_PROGRESS") return "Mark Done";
+    if (current === "pending") return "Start Progress";
+    if (current === "in_progress") return "Mark Done";
     return "Reopen Task";
   };
 
@@ -49,7 +51,7 @@ export function TaskCard({ task, onUpdateStatus, onDelete }: TaskCardProps) {
 
           <h4
             className={`text-base font-semibold tracking-tight text-slate-900 dark:text-white ${
-              task.status === "DONE"
+              task.status === "completed"
                 ? "line-through text-slate-400 dark:text-slate-500"
                 : ""
             }`}
@@ -66,7 +68,7 @@ export function TaskCard({ task, onUpdateStatus, onDelete }: TaskCardProps) {
 
         {/* Actions Toolbar */}
         <div className="flex items-center gap-1.5 self-end sm:self-center border-t sm:border-t-0 pt-3 sm:pt-0 w-full sm:w-auto justify-end border-slate-100 dark:border-slate-800">
-          {/* Quick cycle button */}
+          {/* Cycle status button */}
           <Button
             variant="outline"
             size="sm"
@@ -78,12 +80,12 @@ export function TaskCard({ task, onUpdateStatus, onDelete }: TaskCardProps) {
             <ArrowRight className="h-3 w-3 text-slate-400" />
           </Button>
 
-          {/* Quick complete button if not done */}
-          {task.status !== "DONE" && (
+          {/* Quick complete button (only shown if not already completed) */}
+          {task.status !== "completed" && (
             <Button
               variant="outline"
               size="icon"
-              onClick={() => onUpdateStatus(task.id, "DONE")}
+              onClick={() => onComplete(task.id)}
               className="h-8 w-8 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200 dark:hover:bg-emerald-950/50"
               title="Mark Completed"
             >

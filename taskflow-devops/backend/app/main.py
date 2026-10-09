@@ -46,9 +46,12 @@ Built with **FastAPI**, **Pydantic v2**, **SQLAlchemy 2**, and **PostgreSQL**.
 )
 
 # CORS Middleware (Allows Next.js frontend to interact with FastAPI)
+# CORS_ORIGINS is a comma-separated list of allowed origins.
+# Default: localhost:3000 for local development.
+# In production, set CORS_ORIGINS=https://yourdomain.com in your deployment env.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

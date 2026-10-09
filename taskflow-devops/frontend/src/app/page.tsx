@@ -12,11 +12,11 @@ export default function Home() {
           <div className="flex items-center gap-4">
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-              Frontend: Ready
+              Frontend: Next.js → {process.env.NEXT_PUBLIC_API_BASE_URL ?? "API"}
             </span>
-            <span className="inline-flex items-center gap-1.5 text-slate-400">
-              <span className="h-2 w-2 rounded-full bg-amber-400"></span>
-              Backend: Phase 3
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Backend: FastAPI + PostgreSQL
             </span>
           </div>
         </div>

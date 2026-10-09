@@ -230,3 +230,35 @@ def delete_task(
     """
     db_task = _get_task_or_404(task_id, db)
     task_service.delete_task(db, db_task)
+
+
+# ==============================================================================
+# PATCH /api/tasks/{id}/complete
+# ==============================================================================
+
+@router.patch(
+    "/{task_id}/complete",
+    response_model=TaskResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Mark a task as completed",
+    description="Convenience endpoint — sets status to 'completed' without requiring a full PUT body.",
+)
+def complete_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+) -> TaskResponse:
+    """
+    ## PATCH /api/tasks/{id}/complete
+
+    **Purpose:** Quick-complete a task in a single click.
+
+    This is a semantic shortcut for `PUT /api/tasks/{id}` with body
+    `{"status": "completed"}`. It communicates intent clearly and keeps
+    the frontend code simpler.
+
+    **Errors:**
+    - `404 Not Found` — task does not exist
+    """
+    db_task = _get_task_or_404(task_id, db)
+    complete_update = TaskUpdate(status=TaskStatus.completed)
+    return task_service.update_task(db, db_task, complete_update)

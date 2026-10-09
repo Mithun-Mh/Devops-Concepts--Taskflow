@@ -1,16 +1,14 @@
 import React from "react";
-import { Filter, RotateCw, AlertCircle } from "lucide-react";
+import { Filter, RefreshCw } from "lucide-react";
 import { TaskFilter } from "@/types/task";
 import { Button } from "@/components/ui/button";
 
 interface TaskFiltersProps {
   currentFilter: TaskFilter;
   onFilterChange: (filter: TaskFilter) => void;
-  counts: { all: number; todo: number; in_progress: number; done: number };
+  counts: { all: number; pending: number; in_progress: number; completed: number };
   isLoading: boolean;
-  onSimulateLoading: () => void;
-  isError: boolean;
-  onToggleSimulateError: () => void;
+  onRefresh: () => void;
 }
 
 export function TaskFilters({
@@ -18,15 +16,13 @@ export function TaskFilters({
   onFilterChange,
   counts,
   isLoading,
-  onSimulateLoading,
-  isError,
-  onToggleSimulateError,
+  onRefresh,
 }: TaskFiltersProps) {
   const filterOptions: { label: string; value: TaskFilter; count: number }[] = [
-    { label: "All Tasks", value: "ALL", count: counts.all },
-    { label: "To Do", value: "TODO", count: counts.todo },
-    { label: "In Progress", value: "IN_PROGRESS", count: counts.in_progress },
-    { label: "Completed", value: "DONE", count: counts.done },
+    { label: "All Tasks",    value: "ALL",         count: counts.all },
+    { label: "To Do",        value: "pending",     count: counts.pending },
+    { label: "In Progress",  value: "in_progress", count: counts.in_progress },
+    { label: "Completed",    value: "completed",   count: counts.completed },
   ];
 
   return (
@@ -61,30 +57,19 @@ export function TaskFilters({
         ))}
       </div>
 
-      {/* Simulator buttons for Loading & Error States */}
+      {/* Refresh button — replaces old "simulate" buttons now that API is live */}
       <div className="flex items-center gap-2 self-end md:self-auto text-xs">
-        <span className="text-slate-400 text-[11px] hidden lg:inline">Simulators:</span>
+        <span className="text-slate-400 text-[11px] hidden lg:inline">Live API:</span>
         <Button
           variant="outline"
           size="sm"
-          onClick={onSimulateLoading}
+          onClick={onRefresh}
           disabled={isLoading}
           className="h-8 text-xs gap-1 text-slate-600 dark:text-slate-300"
-          title="Simulate API fetch delay"
+          title="Reload tasks from FastAPI backend"
         >
-          <RotateCw className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`} />
-          <span>Simulate Load</span>
-        </Button>
-
-        <Button
-          variant={isError ? "destructive" : "outline"}
-          size="sm"
-          onClick={onToggleSimulateError}
-          className="h-8 text-xs gap-1"
-          title="Toggle network error state"
-        >
-          <AlertCircle className="h-3 w-3" />
-          <span>{isError ? "Clear Error" : "Simulate Error"}</span>
+          <RefreshCw className={`h-3 w-3 ${isLoading ? "animate-spin" : ""}`} />
+          <span>Sync with API</span>
         </Button>
       </div>
     </div>

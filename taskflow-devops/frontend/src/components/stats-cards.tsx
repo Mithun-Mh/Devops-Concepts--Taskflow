@@ -20,7 +20,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
     },
     {
       title: "To Do",
-      count: stats.todo,
+      count: stats.pending,
       description: "Pending implementation",
       icon: ListTodo,
       color: "text-amber-600 dark:text-amber-400",
@@ -38,7 +38,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
     },
     {
       title: "Completed",
-      count: stats.done,
+      count: stats.completed,
       description: "Successfully shipped",
       icon: CheckCircle2,
       color: "text-emerald-600 dark:text-emerald-400",

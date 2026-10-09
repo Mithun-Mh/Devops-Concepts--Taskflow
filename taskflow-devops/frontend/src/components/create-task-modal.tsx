@@ -14,7 +14,7 @@ interface CreateTaskModalProps {
 export function CreateTaskModal({ isOpen, onClose, onCreateTask }: CreateTaskModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState<TaskStatus>("TODO");
+  const [status, setStatus] = useState<TaskStatus>("pending");
   const [error, setError] = useState("");
 
   if (!isOpen) return null;
@@ -35,10 +35,16 @@ export function CreateTaskModal({ isOpen, onClose, onCreateTask }: CreateTaskMod
     // Reset and close
     setTitle("");
     setDescription("");
-    setStatus("TODO");
+    setStatus("pending");
     setError("");
     onClose();
   };
+
+  const statusOptions: { value: TaskStatus; label: string }[] = [
+    { value: "pending",     label: "To Do" },
+    { value: "in_progress", label: "In Progress" },
+    { value: "completed",   label: "Completed" },
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -103,18 +109,18 @@ export function CreateTaskModal({ isOpen, onClose, onCreateTask }: CreateTaskMod
               Initial Status
             </label>
             <div className="grid grid-cols-3 gap-2">
-              {(["TODO", "IN_PROGRESS", "DONE"] as TaskStatus[]).map((st) => (
+              {statusOptions.map(({ value, label }) => (
                 <button
                   type="button"
-                  key={st}
-                  onClick={() => setStatus(st)}
+                  key={value}
+                  onClick={() => setStatus(value)}
                   className={`rounded-lg border px-3 py-2 text-xs font-medium transition-all ${
-                    status === st
+                    status === value
                       ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm dark:border-blue-500 dark:bg-blue-950/60 dark:text-blue-300 font-semibold"
                       : "border-slate-200 bg-slate-50/50 text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400"
                   }`}
                 >
-                  {st === "TODO" ? "To Do" : st === "IN_PROGRESS" ? "In Progress" : "Done"}
+                  {label}
                 </button>
               ))}
             </div>

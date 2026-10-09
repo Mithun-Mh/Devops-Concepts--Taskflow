@@ -1,7 +1,20 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { Plus } from "lucide-react";
+// =============================================================================
+// components/dashboard.tsx — Main Dashboard with Live API Integration
+// =============================================================================
+// All state mutations call the API service layer (lib/api/tasks.ts).
+// No fetch() calls, no URLs, and no hardcoded data live in this component.
+// Data flow:
+//   Mount → fetchTasks() → display tasks
+//   Create → createTask() → append to state (optimistic UI)
+//   Update → updateTask() → update in state
+//   Complete → completeTask() → update in state
+//   Delete → deleteTask() → remove from state
+// =============================================================================
+
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { Plus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatsCards } from "@/components/stats-cards";
 import { TaskFilters } from "@/components/task-filters";
@@ -11,85 +24,100 @@ import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { ErrorState } from "@/components/error-state";
 import { CreateTaskModal } from "@/components/create-task-modal";
 import { Task, TaskFilter, TaskStatus, TaskStats } from "@/types/task";
-
-// Initial sample DevOps backlog tasks
-const INITIAL_TASKS: Task[] = [
-  {
-    id: 1,
-    title: "Containerize FastAPI Backend with Multi-Stage Dockerfile",
-    description: "Write production Dockerfile with non-root user and minimal alpine/slim python runtime.",
-    status: "DONE",
-    created_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-    updated_at: new Date(Date.now() - 3600000 * 24).toISOString(),
-  },
-  {
-    id: 2,
-    title: "Implement GitHub Actions CI Pipeline with Trivy Security Scan",
-    description: "Automate linting, unit tests, and vulnerability scanning on every pull request to main.",
-    status: "IN_PROGRESS",
-    created_at: new Date(Date.now() - 3600000 * 12).toISOString(),
-    updated_at: new Date(Date.now() - 3600000 * 12).toISOString(),
-  },
-  {
-    id: 3,
-    title: "Configure Argo CD Declarative GitOps Application Sync",
-    description: "Define application.yaml manifest pointing to taskflow Helm chart repo for automated sync.",
-    status: "TODO",
-    created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
-    updated_at: new Date(Date.now() - 3600000 * 4).toISOString(),
-  },
-  {
-    id: 4,
-    title: "Provision Local 3-Node kind Kubernetes Cluster via Terraform",
-    description: "Write Terraform configuration for kind cluster with port-forwarding for ingress controllers.",
-    status: "TODO",
-    created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-    updated_at: new Date(Date.now() - 3600000 * 2).toISOString(),
-  },
-];
+import {
+  fetchTasks,
+  createTask,
+  updateTask,
+  completeTask,
+  deleteTask,
+  ApiError,
+} from "@/lib/api";
 
 export function Dashboard() {
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<TaskFilter>("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
-  // Compute Task Stats
+  // ---------------------------------------------------------------------------
+  // Load tasks from the API on mount and on manual refresh
+  // ---------------------------------------------------------------------------
+  const loadTasks = useCallback(async () => {
+    setIsLoading(true);
+    setIsError(false);
+    setErrorMessage("");
+
+    try {
+      const response = await fetchTasks();
+      setTasks(response.tasks as Task[]);
+    } catch (err) {
+      setIsError(true);
+      if (err instanceof ApiError) {
+        setErrorMessage(`API Error ${err.status}: ${err.detail}`);
+      } else {
+        setErrorMessage(
+          "Cannot reach the backend. Is FastAPI running on port 8000?"
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTasks();
+  }, [loadTasks]);
+
+  // ---------------------------------------------------------------------------
+  // Computed stats
+  // ---------------------------------------------------------------------------
   const stats: TaskStats = useMemo(() => {
     return {
       total: tasks.length,
-      todo: tasks.filter((t) => t.status === "TODO").length,
-      in_progress: tasks.filter((t) => t.status === "IN_PROGRESS").length,
-      done: tasks.filter((t) => t.status === "DONE").length,
+      pending: tasks.filter((t) => t.status === "pending").length,
+      in_progress: tasks.filter((t) => t.status === "in_progress").length,
+      completed: tasks.filter((t) => t.status === "completed").length,
     };
   }, [tasks]);
 
-  // Filter tasks based on selected tab
+  // ---------------------------------------------------------------------------
+  // Filtered task list
+  // ---------------------------------------------------------------------------
   const filteredTasks = useMemo(() => {
     if (filter === "ALL") return tasks;
     return tasks.filter((t) => t.status === filter);
   }, [tasks, filter]);
 
-  // Action handlers
-  const handleCreateTask = (newTaskData: {
+  // ---------------------------------------------------------------------------
+  // CREATE — POST /api/tasks/
+  // ---------------------------------------------------------------------------
+  const handleCreateTask = async (newTaskData: {
     title: string;
     description: string;
     status: TaskStatus;
   }) => {
-    const nextId = tasks.length > 0 ? Math.max(...tasks.map((t) => t.id)) + 1 : 1;
-    const newTask: Task = {
-      id: nextId,
-      title: newTaskData.title,
-      description: newTaskData.description,
-      status: newTaskData.status,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    setTasks([newTask, ...tasks]);
+    try {
+      const created = await createTask({
+        title: newTaskData.title,
+        description: newTaskData.description || null,
+        status: newTaskData.status,
+      });
+      // Prepend to list so the newest task appears first (mirrors API ordering)
+      setTasks((prev) => [created as Task, ...prev]);
+    } catch (err) {
+      console.error("Failed to create task:", err);
+      // Re-fetch to keep UI in sync with server state
+      await loadTasks();
+    }
   };
 
-  const handleUpdateStatus = (id: number, newStatus: TaskStatus) => {
+  // ---------------------------------------------------------------------------
+  // UPDATE STATUS — PUT /api/tasks/{id}
+  // ---------------------------------------------------------------------------
+  const handleUpdateStatus = async (id: number, newStatus: TaskStatus) => {
+    // Optimistic update — apply immediately, roll back on error
     setTasks((prev) =>
       prev.map((task) =>
         task.id === id
@@ -97,22 +125,58 @@ export function Dashboard() {
           : task
       )
     );
+
+    try {
+      const updated = await updateTask(id, { status: newStatus });
+      // Replace optimistic entry with the server-confirmed version
+      setTasks((prev) =>
+        prev.map((task) => (task.id === id ? (updated as Task) : task))
+      );
+    } catch (err) {
+      console.error("Failed to update task status:", err);
+      // Roll back by re-fetching
+      await loadTasks();
+    }
   };
 
-  const handleDeleteTask = (id: number) => {
+  // ---------------------------------------------------------------------------
+  // COMPLETE — PATCH /api/tasks/{id}/complete
+  // ---------------------------------------------------------------------------
+  const handleCompleteTask = async (id: number) => {
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === id
+          ? { ...task, status: "completed", updated_at: new Date().toISOString() }
+          : task
+      )
+    );
+
+    try {
+      const updated = await completeTask(id);
+      setTasks((prev) =>
+        prev.map((task) => (task.id === id ? (updated as Task) : task))
+      );
+    } catch (err) {
+      console.error("Failed to complete task:", err);
+      await loadTasks();
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // DELETE — DELETE /api/tasks/{id}
+  // ---------------------------------------------------------------------------
+  const handleDeleteTask = async (id: number) => {
+    // Optimistic removal
     setTasks((prev) => prev.filter((task) => task.id !== id));
-  };
 
-  // State simulators
-  const handleSimulateLoading = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1200);
-  };
-
-  const handleToggleError = () => {
-    setIsError(!isError);
+    try {
+      await deleteTask(id);
+    } catch (err) {
+      console.error("Failed to delete task:", err);
+      // Roll back by re-fetching
+      await loadTasks();
+    }
   };
 
   return (
@@ -130,6 +194,21 @@ export function Dashboard() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Manual refresh button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadTasks}
+              disabled={isLoading}
+              className="gap-2 text-slate-600 dark:text-slate-300"
+              title="Refresh tasks from API"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </Button>
+
             <Button
               onClick={() => setIsModalOpen(true)}
               className="gap-2 shadow-md shadow-blue-500/20"
@@ -148,26 +227,31 @@ export function Dashboard() {
           <StatsCards stats={stats} />
         </section>
 
-        {/* Filters & Simulators */}
+        {/* Filters & Task List */}
         <section className="space-y-4">
           <TaskFilters
             currentFilter={filter}
             onFilterChange={setFilter}
             counts={{
               all: stats.total,
-              todo: stats.todo,
+              pending: stats.pending,
               in_progress: stats.in_progress,
-              done: stats.done,
+              completed: stats.completed,
             }}
             isLoading={isLoading}
-            onSimulateLoading={handleSimulateLoading}
-            isError={isError}
-            onToggleSimulateError={handleToggleError}
+            onRefresh={loadTasks}
           />
+
+          {/* Error banner with detail message */}
+          {errorMessage && isError && (
+            <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400">
+              <strong>Connection error:</strong> {errorMessage}
+            </div>
+          )}
 
           {/* Conditional Rendering: Error vs Loading vs Content */}
           {isError ? (
-            <ErrorState onRetry={() => setIsError(false)} />
+            <ErrorState onRetry={loadTasks} />
           ) : isLoading ? (
             <LoadingSkeleton />
           ) : filteredTasks.length === 0 ? (
@@ -182,6 +266,7 @@ export function Dashboard() {
                   key={task.id}
                   task={task}
                   onUpdateStatus={handleUpdateStatus}
+                  onComplete={handleCompleteTask}
                   onDelete={handleDeleteTask}
                 />
               ))}

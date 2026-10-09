@@ -17,8 +17,9 @@ except (ImportError, ValueError):
 # Only "pending" and "completed" are valid — anything else raises a DB error.
 # ==============================================================================
 class TaskStatus(str, enum.Enum):
-    pending   = "pending"
-    completed = "completed"
+    pending     = "pending"
+    in_progress = "in_progress"
+    completed   = "completed"
 
 
 # ==============================================================================
@@ -76,7 +77,7 @@ class Task(Base):
     # default="pending" means every new task starts as pending
     # ------------------------------------------------------------------
     status = Column(
-        SAEnum(TaskStatus, name="task_status_enum", create_type=True),
+        SAEnum(TaskStatus, name="task_status_enum", create_type=True, values_callable=lambda obj: [e.value for e in obj]),
         default=TaskStatus.pending,
         nullable=False,
         index=True,
