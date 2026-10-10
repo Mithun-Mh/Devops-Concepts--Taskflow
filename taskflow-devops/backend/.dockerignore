@@ -1,0 +1,43 @@
+# ==============================================================================
+# .dockerignore — Files excluded from the Docker build context
+# ==============================================================================
+# Prevents sensitive files, local virtual environments, and temporary caches
+# from bloating image layers or leaking into container images.
+# ==============================================================================
+
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment files & secrets (never bake production secrets into images)
+.env
+.env.local
+.env.*.local
+
+# Local SQLite / dev database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Git & IDE metadata
+.git/
+.gitignore
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker metadata
+Dockerfile*
+.dockerignore
