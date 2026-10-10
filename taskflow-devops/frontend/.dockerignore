@@ -1,0 +1,30 @@
+# ==============================================================================
+# .dockerignore — Frontend Build Context Exclusions
+# ==============================================================================
+# Excludes local node_modules, build outputs, local environment overrides,
+# and developer artifacts from the Docker build context.
+# ==============================================================================
+
+node_modules/
+.next/
+out/
+build/
+dist/
+
+.git/
+.gitignore
+.idea/
+.vscode/
+
+# Local environment files (prevent accidental secrets leak)
+.env*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Docker metadata
+Dockerfile*
+.dockerignore
