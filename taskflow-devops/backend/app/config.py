@@ -6,7 +6,7 @@
 # all configuration — NO hard-coded credentials anywhere in the codebase.
 # ==============================================================================
 
-from typing import List
+from typing import List, Union
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     """
     Application configuration loaded from environment variables.
 
-    Priority order (highest → lowest):
+    Priority order (highest -> lowest):
       1. Real environment variables (e.g. set in shell / Docker / Kubernetes)
       2. Values in a local .env file (development convenience)
       3. Default values defined below
@@ -37,17 +37,15 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed frontend origins.
     # Example (production): CORS_ORIGINS=https://app.example.com,https://www.example.com
     # Never use "*" in production with allow_credentials=True.
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    CORS_ORIGINS: Union[str, List[str]] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
-    @field_validator("CORS_ORIGINS", mode="before")
+    @field_validator("CORS_ORIGINS", mode="after")
     @classmethod
-    def parse_cors_origins(cls, v: object) -> List[str]:
+    def parse_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
         """Accept either a comma-separated string or an already-parsed list."""
-        if isinstance(v, list):
-            return v
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(",") if origin.strip()]
-        raise ValueError(f"CORS_ORIGINS must be a string or list, got {type(v)}")
+        return v
 
     # ----- App ---------------------------------------------------------------
     APP_VERSION: str = "0.1.0"

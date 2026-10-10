@@ -65,6 +65,7 @@ def _get_task_or_404(task_id: int, db: Session) -> object:
         "Pass `?status=pending` or `?status=completed` to filter."
     ),
 )
+@router.get("", include_in_schema=False, response_model=TaskListResponse)
 def list_tasks(
     status_filter: Optional[TaskStatus] = Query(
         default=None,
@@ -100,6 +101,7 @@ def list_tasks(
     summary="Create a new task",
     description="Creates a task with the provided title, optional description, and status.",
 )
+@router.post("", include_in_schema=False, response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 def create_task(
     task_in: TaskCreate,
     db: Session = Depends(get_db),

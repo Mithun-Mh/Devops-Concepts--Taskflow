@@ -32,7 +32,7 @@ def run_migration():
         already_exists = result.fetchone() is not None
 
         if already_exists:
-            print("✓ 'in_progress' already exists in task_status_enum — nothing to do.")
+            print("[OK] 'in_progress' already exists in task_status_enum - nothing to do.")
             return
 
         # Add the new enum value (PostgreSQL ALTER TYPE ... ADD VALUE)
@@ -41,13 +41,13 @@ def run_migration():
         conn.execute(text(
             "ALTER TYPE task_status_enum ADD VALUE 'in_progress'"
         ))
-        print("✓ Successfully added 'in_progress' to task_status_enum.")
+        print("[OK] Successfully added 'in_progress' to task_status_enum.")
         print("  Restart FastAPI for the change to take effect.")
 
 if __name__ == "__main__":
     try:
         run_migration()
     except Exception as e:
-        print(f"✗ Migration failed: {e}", file=sys.stderr)
+        print(f"[ERROR] Migration failed: {e}", file=sys.stderr)
         print("\nMake sure PostgreSQL is running (docker compose up -d db)", file=sys.stderr)
         sys.exit(1)
