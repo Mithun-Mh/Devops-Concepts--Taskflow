@@ -1,24 +1,38 @@
 # ==============================================================================
-# TaskFlow - Local Development Environment (Docker Compose)
+# TaskFlow — Complete Multi-Service Environment (Docker Compose)
 # ==============================================================================
-# Starts PostgreSQL so the FastAPI backend can connect to a real database.
+# Orchestrates the three-tier TaskFlow platform:
+#   1. PostgreSQL 16 (Database)
+#   2. FastAPI (Backend REST API)
+#   3. Next.js (Frontend Web UI)
+#
+# Architecture:
+#   Browser (User)
+#     │
+#     ▼ (port 3000)
+#   Next.js (taskflow-frontend)
+#     │
+#     ▼ (port 8000 / CORS)
+#   FastAPI (taskflow-backend)
+#     │
+#     ▼ (port 5432 / taskflow-network)
+#   PostgreSQL (taskflow-db)
 #
 # Usage:
-#   docker compose up -d db        # start only PostgreSQL
-#   docker compose up -d           # start everything
-#   docker compose down            # stop & remove containers
-#   docker compose down -v         # stop & delete the data volume too
+#   docker compose up -d          # Build (if needed) & start all services in background
+#   docker compose ps             # Check health status of all 3 services
+#   docker compose logs -f        # Stream logs across all services
+#   docker compose down           # Stop & remove containers, networks
+#   docker compose down -v        # Stop & purge persistent PostgreSQL volume
 # ==============================================================================
-
-version: '3.8'
 
 services:
 
   # ----------------------------------------------------------------------------
-  # PostgreSQL 16
+  # 1. Database: PostgreSQL 16
   # ----------------------------------------------------------------------------
   db:
-    image: postgres:16-alpine          # Lightweight Alpine-based image
+    image: postgres:16-alpine
     container_name: taskflow-db
     restart: unless-stopped
     environment:
@@ -26,45 +40,88 @@ services:
       POSTGRES_PASSWORD: taskflow_password
       POSTGRES_DB: taskflow_db
     ports:
-      - "5432:5432"                    # Expose to host so FastAPI can reach it
+      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data   # Persist data across restarts
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - taskflow-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U taskflow_user -d taskflow_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ----------------------------------------------------------------------------
+  # 2. Backend API: FastAPI (Python 3.12)
+  # ----------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: taskflow-backend:latest
+    container_name: taskflow-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://taskflow_user:taskflow_password@db:5432/taskflow_db
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      ENVIRONMENT: development
+      SQL_ECHO: "False"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - taskflow-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 5s
 
   # ----------------------------------------------------------------------------
-  # FastAPI Backend  (Phase 2 — uncomment when Dockerfile.dev is ready)
+  # 3. Frontend: Next.js (Node 20 Alpine)
   # ----------------------------------------------------------------------------
-  # backend:
-  #   build:
-  #     context: ./backend
-  #     dockerfile: Dockerfile
-  #   container_name: taskflow-backend
-  #   ports:
-  #     - "8000:8000"
-  #   env_file:
-  #     - ./backend/.env
-  #   environment:
-  #     DATABASE_URL: postgresql://taskflow_user:taskflow_password@db:5432/taskflow_db
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api
+    image: taskflow-frontend:latest
+    container_name: taskflow-frontend
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      HOSTNAME: "0.0.0.0"
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - taskflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
-  # ----------------------------------------------------------------------------
-  # Next.js Frontend  (Phase 3)
-  # ----------------------------------------------------------------------------
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile.dev
-  #   container_name: taskflow-frontend
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - backend
-
+# ------------------------------------------------------------------------------
+# Persistent Storage Volumes
+# ------------------------------------------------------------------------------
 volumes:
-  postgres_data:    # Named volume — data survives container restarts
+  postgres_data:
+    name: taskflow_postgres_data
+
+# ------------------------------------------------------------------------------
+# Isolated Bridge Network
+# ------------------------------------------------------------------------------
+networks:
+  taskflow-network:
+    name: taskflow-network
+    driver: bridge
