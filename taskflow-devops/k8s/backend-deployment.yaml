@@ -7,7 +7,16 @@ metadata:
     app: backend
     app.kubernetes.io/part-of: taskflow-platform
 spec:
-  replicas: 1
+  # 1. High Availability: multiple replicas
+  replicas: 2
+
+  # 2. Zero-downtime rolling update strategy
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1          # Spin up 1 new pod before terminating old ones
+      maxUnavailable: 0    # Never terminate an old pod until the new one is ready
+
   selector:
     matchLabels:
       app: backend
@@ -44,13 +53,17 @@ spec:
                 configMapKeyRef:
                   name: taskflow-config
                   key: SQL_ECHO
+
+          # 3. Predictable compute guarantees & prevention of noisy neighbors
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: "100m"        # Minimum 0.1 CPU core guaranteed
+              memory: "128Mi"    # Minimum 128 MB RAM guaranteed
             limits:
-              cpu: "500m"
-              memory: "512Mi"
+              cpu: "500m"        # Hard ceiling: max 0.5 CPU core
+              memory: "512Mi"    # Hard ceiling: max 512 MB RAM (OOMKilled if exceeded)
+
+          # 4. Readiness Probe: controls traffic routing from backend-service
           readinessProbe:
             httpGet:
               path: /api/health
@@ -58,6 +71,10 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 5
             timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+
+          # 5. Liveness Probe: detects deadlock/freeze and restarts the container
           livenessProbe:
             httpGet:
               path: /api/health
@@ -65,3 +82,5 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
